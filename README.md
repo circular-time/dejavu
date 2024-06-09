@@ -49,10 +49,14 @@ func main() {
 }
 ```
 
-## Caveat
+## Caveats
 `dejavu` requires cached values to be of fixed length. Users working with data
 of varying sizes should consider caching not those values, but their hashes
 instead.
+
+Furthermore, it stores data in a binary tree that is not self-balancing. Values
+that naturally occur in lexicographical order, such as time-based UUIDs, should
+be hashed before caching for optimal performance.
 
 ## Space complexity
 `dejavu.Cache` occupies exactly _n_ (log _k_ + 2 log _n_) bits of memory to
@@ -73,6 +77,11 @@ The Go runtime has its own overheads that add to total memory consumption.
 ## Time complexity
 `cache.Insert()` and `cache.Recall()` are operations in a binary tree averaging
 an equivalent time complexity of _O_(log _n_).
+
+In the worst-case scenario where values are cached in ascending/descending
+order, the binary tree would end up a linked list with complexity _O_(_n_), in
+which case it would be more space-efficient to use a regular list of complexity
+Ω(_n_ log _k_).
 
 ## Benchmarks
 ```txt
