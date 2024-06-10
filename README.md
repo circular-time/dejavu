@@ -63,11 +63,6 @@ be hashed before caching for optimal performance.
 store _n_ elements out of a set of _k_ possibilities. For example, it would
 take 88 MiB to maintain a cache of more than four million IPv6 addresses.
 
-Experiments suggest that `dejavu.Cache` is roughly two times more
-memory-efficient than a Go `map[[16]byte]struct{}` with the same number of
-keys, and somewhere in the region of ten times so compared to an LMDB instance
-holding the same number of records consisting of 128-bit keys and 0-bit values.
-
 The additional 2 log _n_ per element above the theoretical baseline of log _k_
 is incurred to maintain a binary tree structure, as a trade-off against time
 complexity.
@@ -92,4 +87,50 @@ BenchmarkCacheInsert
 BenchmarkCacheInsert-2     2290011     739.7 ns/op     0 B/op     0 allocs/op
 BenchmarkCacheRecall
 BenchmarkCacheRecall-2     2246784     759.0 ns/op     0 B/op     0 allocs/op
+```
+
+Experiments suggest that `dejavu.Cache` is roughly two times more
+memory-efficient than a Go `map[[16]byte]struct{}` with the same number of
+keys, and somewhere in the region of ten times so compared to an LMDB instance
+holding the same number of records consisting of 128-bit keys and 0-bit values.
+
+```go
+package main
+
+import (
+	"testing"
+
+	"github.com/circular-time/dejavu"
+)
+
+const (
+	n = 1 << 22 // 2^22 = 4,194,304
+)
+
+func BenchmarkDejavu(b *testing.B) {
+	var (
+		i int
+	)
+
+	for i = 0; i < b.N; i++ {
+		dejavu.NewCache128(n)
+	}
+}
+
+func BenchmarkMap(b *testing.B) {
+	var (
+		i int
+	)
+
+	for i = 0; i < b.N; i++ {
+		_ = make(map[[16]byte]struct{}, n)
+	}
+}
+```
+
+```txt
+BenchmarkDejavu
+BenchmarkDejavu-2    1105    1475508 ns/op     92274688 B/op    1 allocs/op
+BenchmarkMap
+BenchmarkMap-2        592    2558122 ns/op    160432152 B/op    2 allocs/op
 ```
