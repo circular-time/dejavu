@@ -227,11 +227,13 @@ func (c *Cache) setVal(i int, val []byte) {
 	// Ensure it is only called while the mutex is locked!
 
 	var (
+		j      int
 		valPos int = i * c.nodeLen()
 	)
 
-	for i = 0; i < len(val); i++ {
-		c.memory[valPos+i] = val[i]
+	// copy(c.memory[valPos:valPos+c.valLen], val)
+	for j = 0; j < len(val); j++ {
+		c.memory[valPos+j] = val[j]
 	}
 
 	return
@@ -306,6 +308,7 @@ func putUint32(into []byte, value uint32) {
 
 	binary.BigEndian.PutUint32(b, value)
 
+	// copy(into, b[l-len(into):])
 	for i = 0; i < len(into); i++ {
 		into[i] = b[l-len(into)+i]
 	}
@@ -327,6 +330,7 @@ func getUint32(from []byte) uint32 {
 		i int
 	)
 
+	// copy(b[l-len(from):], from)
 	for i = 0; i < len(from); i++ {
 		b[l-len(from)+i] = from[i]
 	}
