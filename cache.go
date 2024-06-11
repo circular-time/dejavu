@@ -11,16 +11,14 @@ const (
 	bitsPerByte = 8
 )
 
+// A Cache is a binary tree, held in memory as a byte array divided into
+// segments of equal length, each representing a node in the tree.
+//
+// A node begins with a value of fixed length valLen, followed by two indices
+// of length idxlen pointing to its left and right children.
+//
+// The Cache is insert-only and has a write lock to prevent concurrent writes.
 type Cache struct {
-	// A Cache is a binary tree, held in memory as a byte array divided into
-	// segments of equal length, each representing a node in the tree.
-
-	// A node begins with a value of fixed length valLen, followed by two
-	// indices of length idxlen pointing to its left and right children.
-
-	// The Cache is insert-only and has a write lock to prevent concurrent
-	// writes.
-
 	memory []byte // pointer to array in memory holding binary tree
 
 	length int        // number of values cached
@@ -32,28 +30,24 @@ type Cache struct {
 	maxCap int // maximum number of values that can be cached
 }
 
+// NewCache128 creates a new Cache that holds up to n 128-bit values in memory.
+// Allocates an array of maximum size 96 GiB if n == math.MaxUint32.
 func NewCache128(n uint32) *Cache {
-	// Creates a new Cache that holds up to n 128-bit values in memory.
-	// Allocates an array of maximum size 96 GiB if n == math.MaxUint32.
-
 	return newCache(128, n)
 }
 
+// Length returns the number of values currently cached.
 func (c *Cache) Length() int {
-	// Returns the number of values currently cached.
-
 	return c.length
 }
 
+// Size returns the size of the underlying array, in number of bytes.
 func (c *Cache) Size() int {
-	// Returns the size of the underlying array, in number of bytes.
-
 	return len(c.memory)
 }
 
+// Insert caches a value.
 func (c *Cache) Insert(value []byte) (e error) {
-	// Caches a value.
-
 	if c.length == c.maxCap {
 		e = fmt.Errorf("could not insert: no more free space left in cache")
 
@@ -77,9 +71,8 @@ func (c *Cache) Insert(value []byte) (e error) {
 	return
 }
 
+// Recall returns true if a value has been cached, false otherwise.
 func (c *Cache) Recall(value []byte) (cached bool, e error) {
-	// Returns true if a value has been cached, false otherwise.
-
 	if len(value) != c.valLen {
 		e = fmt.Errorf("could not recall: value length not equal to %d bytes",
 			c.valLen,
