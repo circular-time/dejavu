@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	bitsPerByte = 8
+	bitsPerByte  = 8
+	maxUintLen32 = 4
 )
 
 // A Cache is a binary tree, held in memory as a byte array divided into
@@ -290,20 +291,16 @@ func putUint32(into []byte, value uint32) {
 	// Copies the last bytes in the big-endian representation of value into a
 	// byte slice, sans leading zeroes.
 
-	const (
-		l = 4
-	)
-
 	var (
-		b = make([]byte, l)
+		b = make([]byte, maxUintLen32)
 		i int
 	)
 
 	binary.BigEndian.PutUint32(b, value)
 
-	// copy(into, b[l-len(into):])
+	// copy(into, b[maxUintLen32-len(into):])
 	for i = 0; i < len(into); i++ {
-		into[i] = b[l-len(into)+i]
+		into[i] = b[maxUintLen32-len(into)+i]
 	}
 
 	return
@@ -314,18 +311,14 @@ func getUint32(from []byte) uint32 {
 	// If shorter than four bytes, the representation is assumed to be
 	// right-aligned with leading zeroes omitted.
 
-	const (
-		l = 4
-	)
-
 	var (
-		b = make([]byte, l)
+		b = make([]byte, maxUintLen32)
 		i int
 	)
 
-	// copy(b[l-len(from):], from)
+	// copy(b[maxUintLen32-len(from):], from)
 	for i = 0; i < len(from); i++ {
-		b[l-len(from)+i] = from[i]
+		b[maxUintLen32-len(from)+i] = from[i]
 	}
 
 	return binary.BigEndian.Uint32(b)
