@@ -1,6 +1,8 @@
 # Déjà vu
-For when you need to be 100% sure something has been seen before. For when
-bloom filters just won't make the cut due to their probabilistic nature.
+A zero-allocation, space-efficient, logarithmic-time solution in Go to the
+exact membership query problem, for when you need to be 100% sure something has
+been seen before. For when bloom filters just won't make the cut due to their
+probabilistic nature.
 
 ## TL;DR
 `dejavu` is a Go module that aims to provide an efficient and elegant way of
@@ -56,7 +58,8 @@ instead.
 
 Furthermore, it stores data in a binary tree that is not self-balancing. Values
 that naturally occur in lexicographical order, such as time-based UUIDs, should
-be hashed before caching for optimal performance.
+be hashed (or have their bytes rearranged so that the random bits come first)
+before caching for optimal performance.
 
 ## Space complexity
 `dejavu.Cache` occupies exactly _n_ (log _k_ + 2 log _n_) bits of memory to
