@@ -86,6 +86,19 @@ func (c *Cache) Recall(value []byte) (cached bool, e error) {
 	return c.recall(0, value), nil
 }
 
+// Last returns the last-cached value, or an nil slice if the cache is empty.
+func (c *Cache) Last() (value []byte) {
+	switch c.length {
+	case 0:
+		return
+
+	default:
+		value = c.val(c.length - 1)
+	}
+
+	return
+}
+
 // Save writes all cached values to an [io.Writer] in the order of their
 // insertion, after sending metadata about value length and quantity.
 func (c *Cache) Save(writer io.Writer) (e error) {

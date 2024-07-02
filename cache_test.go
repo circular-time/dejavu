@@ -41,6 +41,10 @@ func TestCache(t *testing.T) {
 		cache.Size(),
 	)
 
+	assert.Nil(t,
+		cache.Last(),
+	)
+
 	for i = 0; i < nCases; i++ {
 		random = make([]byte, 16)
 
@@ -60,6 +64,10 @@ func TestCache(t *testing.T) {
 
 		assert.Equal(t, i+1,
 			cache.Length(),
+		)
+
+		assert.Equal(t, stash[i],
+			cache.Last(),
 		)
 
 		for j = 0; j < nCases; j++ {
