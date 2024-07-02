@@ -1,13 +1,11 @@
 # Déjà vu
 A zero-allocation, space-efficient, logarithmic-time solution in Go to the
-exact membership query problem, for when you need to be 100% sure something has
-been seen before. For when bloom filters just won't make the cut due to their
-probabilistic nature.
+exact membership query problem, `dejavu` is a Go module that aims to provide an
+elegant way of answering the following yes-no question: "Is element _x_ a
+member of the set _S_?"
 
-## TL;DR
-`dejavu` is a Go module that aims to provide an efficient and elegant way of
-answering the following yes-no question: "Is element _x_ a member of the set
-_S_?"
+Use `dejavu` when the probabilistic nature of approximate membership query
+structures does not satisfy application requirements.
 
 ```go
 package main

@@ -1,6 +1,7 @@
 package dejavu
 
 import (
+	"bytes"
 	"os"
 	"testing"
 
@@ -76,6 +77,81 @@ func TestCache(t *testing.T) {
 	}
 }
 
+func TestCacheSaveLoad(t *testing.T) {
+	const (
+		nCases = 1 << 8 // 256
+	)
+
+	var (
+		found  bool
+		buffer bytes.Buffer
+		cache0 *Cache
+		cache1 *Cache
+		e      error
+		i      int
+		random []byte
+		source *os.File
+		stash  [][]byte
+	)
+
+	source, e = os.Open("/dev/urandom")
+	if e != nil {
+		t.Error(e)
+	}
+
+	defer source.Close()
+
+	cache0 = NewCache128(nCases)
+
+	random = make([]byte, 16)
+
+	for i = 0; i < nCases; i++ {
+		_, e = source.Read(random)
+		if e != nil {
+			t.Error(e)
+		}
+
+		e = cache0.Insert(random)
+		if e != nil {
+			t.Error(e)
+		}
+
+		stash = append(stash, random)
+	}
+
+	e = cache0.Save(&buffer)
+	if e != nil {
+		t.Error(e)
+	}
+
+	cache1 = NewCache128(nCases)
+
+	for i = 0; i < nCases; i++ {
+		found, e = cache1.Recall(stash[i])
+		if e != nil {
+			t.Error(e)
+		}
+
+		assert.False(t, found)
+	}
+
+	e = cache1.Load(&buffer)
+	if e != nil {
+		t.Error(e)
+	}
+
+	for i = 0; i < nCases; i++ {
+		found, e = cache1.Recall(stash[i])
+		if e != nil {
+			t.Error(e)
+		}
+
+		assert.True(t, found)
+	}
+
+	return
+}
+
 func BenchmarkCacheInsert(b *testing.B) {
 	const (
 		nCases = 1 << 22 // 2^22
@@ -103,9 +179,9 @@ func BenchmarkCacheInsert(b *testing.B) {
 		cache.Size(),
 	)
 
-	for i = 0; i < nCases; i++ {
-		random = make([]byte, 16)
+	random = make([]byte, 16)
 
+	for i = 0; i < nCases; i++ {
 		_, e = source.Read(random)
 		if e != nil {
 			b.Error(e)
@@ -157,9 +233,9 @@ func BenchmarkCacheRecall(b *testing.B) {
 		cache.Size(),
 	)
 
-	for i = 0; i < nCases; i++ {
-		random = make([]byte, 16)
+	random = make([]byte, 16)
 
+	for i = 0; i < nCases; i++ {
 		_, e = source.Read(random)
 		if e != nil {
 			b.Error(e)

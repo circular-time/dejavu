@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"sync"
 )
 
@@ -16,7 +17,7 @@ const (
 // segments of equal length, each representing a node in the tree.
 //
 // A node begins with a value of fixed length valLen, followed by two indices
-// of length idxlen pointing to its left and right children.
+// of length idxLen pointing to its left and right children.
 //
 // The Cache is insert-only and has a write lock to prevent concurrent writes.
 type Cache struct {
@@ -83,6 +84,95 @@ func (c *Cache) Recall(value []byte) (cached bool, e error) {
 	}
 
 	return c.recall(0, value), nil
+}
+
+// Save writes all cached values to an [io.Writer] in the order of their
+// insertion, after sending metadata about value length and quantity.
+func (c *Cache) Save(writer io.Writer) (e error) {
+	var (
+		i int
+	)
+
+	c.mutex.Lock()
+
+	defer c.mutex.Unlock()
+
+	e = binary.Write(writer, binary.BigEndian,
+		uint32(c.valLen),
+	)
+	if e != nil {
+		return
+	}
+
+	e = binary.Write(writer, binary.BigEndian,
+		uint32(c.length),
+	)
+	if e != nil {
+		return
+	}
+
+	for i = 0; i < c.length; i++ {
+		_, e = writer.Write(
+			c.val(i),
+		)
+		if e != nil {
+			return
+		}
+	}
+
+	return
+}
+
+// Counterpart to Save, Load reads and inserts values from an [io.Reader],
+// after verifying metadata about inbound value length and quantity.
+func (c *Cache) Load(reader io.Reader) (e error) {
+	var (
+		i      uint32
+		length uint32
+		valLen uint32
+		value  []byte
+	)
+
+	e = binary.Read(reader, binary.BigEndian, &valLen)
+	if e != nil {
+		return
+	}
+
+	e = binary.Read(reader, binary.BigEndian, &length)
+	if e != nil {
+		return
+	}
+
+	c.mutex.Lock()
+
+	defer c.mutex.Unlock()
+
+	if int(valLen) != c.valLen {
+		e = fmt.Errorf("could not load: value length not equal to %d bytes",
+			c.valLen,
+		)
+
+		return
+	}
+
+	value = make([]byte, valLen)
+
+	if int(length) > (c.maxCap - c.length) {
+		e = fmt.Errorf("could not load: not enough free space left in cache")
+
+		return
+	}
+
+	for i = 0; i < length; i++ {
+		_, e = reader.Read(value)
+		if e != nil {
+			return
+		}
+
+		c.insert(0, value)
+	}
+
+	return
 }
 
 func newCache(l uint8, n uint32) (c *Cache) {
