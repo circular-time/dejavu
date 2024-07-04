@@ -8,28 +8,55 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	nCasesMax = 1 << 22
+)
+
+var (
+	values [][]byte = make([][]byte, nCasesMax)
+)
+
+func TestMain(m *testing.M) {
+	var (
+		e      error
+		i      int
+		random []byte
+		source *os.File
+	)
+
+	source, e = os.Open("/dev/urandom")
+	if e != nil {
+		panic(e)
+	}
+
+	defer source.Close()
+
+	for i = 0; i < nCasesMax; i++ {
+		random = make([]byte, 16)
+
+		_, e = source.Read(random)
+		if e != nil {
+			panic(e)
+		}
+
+		values[i] = random
+	}
+
+	os.Exit(m.Run())
+}
+
 func TestCache(t *testing.T) {
 	const (
 		nCases = 8
 	)
 
 	var (
-		cache  *Cache
-		e      error
-		found  bool
-		i      int
-		j      int
-		random []byte
-		source *os.File
-		stash  [][]byte
+		cache *Cache
+		e     error
+		found bool
+		i     int
+		j     int
 	)
-
-	source, e = os.Open("/dev/urandom")
-	if e != nil {
-		t.Error(e)
-	}
-
-	defer source.Close()
 
 	cache = NewCache128(nCases)
 
@@ -46,18 +73,7 @@ func TestCache(t *testing.T) {
 	)
 
 	for i = 0; i < nCases; i++ {
-		random = make([]byte, 16)
-
-		_, e = source.Read(random)
-		if e != nil {
-			t.Error(e)
-		}
-
-		stash = append(stash, random)
-	}
-
-	for i = 0; i < nCases; i++ {
-		e = cache.Insert(stash[i])
+		e = cache.Insert(values[i])
 		if e != nil {
 			t.Error(e)
 		}
@@ -66,12 +82,12 @@ func TestCache(t *testing.T) {
 			cache.Length(),
 		)
 
-		assert.Equal(t, stash[i],
+		assert.Equal(t, values[i],
 			cache.Last(),
 		)
 
 		for j = 0; j < nCases; j++ {
-			found, e = cache.Recall(stash[j])
+			found, e = cache.Recall(values[j])
 			if e != nil {
 				t.Error(e)
 			}
@@ -97,34 +113,15 @@ func TestCacheSaveLoad(t *testing.T) {
 		cache1 *Cache
 		e      error
 		i      int
-		random []byte
-		source *os.File
-		stash  [][]byte
 	)
-
-	source, e = os.Open("/dev/urandom")
-	if e != nil {
-		t.Error(e)
-	}
-
-	defer source.Close()
 
 	cache0 = NewCache128(nCases)
 
-	random = make([]byte, 16)
-
 	for i = 0; i < nCases; i++ {
-		_, e = source.Read(random)
+		e = cache0.Insert(values[i])
 		if e != nil {
 			t.Error(e)
 		}
-
-		e = cache0.Insert(random)
-		if e != nil {
-			t.Error(e)
-		}
-
-		stash = append(stash, random)
 	}
 
 	e = cache0.Save(&buffer)
@@ -135,7 +132,7 @@ func TestCacheSaveLoad(t *testing.T) {
 	cache1 = NewCache128(nCases)
 
 	for i = 0; i < nCases; i++ {
-		found, e = cache1.Recall(stash[i])
+		found, e = cache1.Recall(values[i])
 		if e != nil {
 			t.Error(e)
 		}
@@ -149,7 +146,7 @@ func TestCacheSaveLoad(t *testing.T) {
 	}
 
 	for i = 0; i < nCases; i++ {
-		found, e = cache1.Recall(stash[i])
+		found, e = cache1.Recall(values[i])
 		if e != nil {
 			t.Error(e)
 		}
@@ -161,51 +158,22 @@ func TestCacheSaveLoad(t *testing.T) {
 }
 
 func BenchmarkCacheInsert(b *testing.B) {
-	const (
-		nCases = 1 << 22 // 2^22
-	)
-
 	var (
-		cache  *Cache
-		e      error
-		i      int
-		random []byte
-		source *os.File
-		stash  [][]byte
+		cache *Cache
+		e     error
+		i     int
 	)
 
-	source, e = os.Open("/dev/urandom")
-	if e != nil {
-		b.Error(e)
-	}
-
-	defer source.Close()
-
-	cache = NewCache128(nCases)
-
-	assert.Equal(b, 92274688,
-		cache.Size(),
-	)
-
-	random = make([]byte, 16)
-
-	for i = 0; i < nCases; i++ {
-		_, e = source.Read(random)
-		if e != nil {
-			b.Error(e)
-		}
-
-		stash = append(stash, random)
-	}
+	cache = NewCache128(nCasesMax)
 
 	b.ResetTimer()
 
 	for i = 0; i < b.N; i++ {
-		if i == nCases {
+		if i == nCasesMax {
 			break
 		}
 
-		e = cache.Insert(stash[i])
+		e = cache.Insert(values[i])
 		if e != nil {
 			b.Error(e)
 		}
@@ -215,45 +183,16 @@ func BenchmarkCacheInsert(b *testing.B) {
 }
 
 func BenchmarkCacheRecall(b *testing.B) {
-	const (
-		nCases = 1 << 22 // 2^22
-	)
-
 	var (
-		cache  *Cache
-		e      error
-		i      int
-		random []byte
-		source *os.File
-		stash  [][]byte
+		cache *Cache
+		e     error
+		i     int
 	)
 
-	source, e = os.Open("/dev/urandom")
-	if e != nil {
-		b.Error(e)
-	}
+	cache = NewCache128(nCasesMax)
 
-	defer source.Close()
-
-	cache = NewCache128(nCases)
-
-	assert.Equal(b, 92274688,
-		cache.Size(),
-	)
-
-	random = make([]byte, 16)
-
-	for i = 0; i < nCases; i++ {
-		_, e = source.Read(random)
-		if e != nil {
-			b.Error(e)
-		}
-
-		stash = append(stash, random)
-	}
-
-	for i = 0; i < nCases; i++ {
-		e = cache.Insert(stash[i])
+	for i = 0; i < nCasesMax; i++ {
+		e = cache.Insert(values[i])
 		if e != nil {
 			b.Error(e)
 		}
@@ -262,11 +201,11 @@ func BenchmarkCacheRecall(b *testing.B) {
 	b.ResetTimer()
 
 	for i = 0; i < b.N; i++ {
-		if i == nCases {
+		if i == nCasesMax {
 			break
 		}
 
-		_, e = cache.Recall(stash[i])
+		_, e = cache.Recall(values[i])
 		if e != nil {
 			b.Error(e)
 		}
