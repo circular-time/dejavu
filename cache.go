@@ -107,29 +107,31 @@ func (c *Cache) Last() (value []byte) {
 // Save writes all cached values to an [io.Writer] in the order of their
 // insertion, after sending metadata about value length and quantity.
 func (c *Cache) Save(writer io.Writer) (e error) {
-	var (
-		i int
-	)
-
 	c.mutex.Lock()
 
-	defer c.mutex.Unlock()
+	var (
+		i      int
+		length int = c.length
+		valLen int = c.valLen
+	)
+
+	c.mutex.Unlock()
 
 	e = binary.Write(writer, binary.BigEndian,
-		uint32(c.valLen),
+		uint32(valLen),
 	)
 	if e != nil {
 		return
 	}
 
 	e = binary.Write(writer, binary.BigEndian,
-		uint32(c.length),
+		uint32(length),
 	)
 	if e != nil {
 		return
 	}
 
-	for i = 0; i < c.length; i++ {
+	for i = 0; i < length; i++ {
 		_, e = writer.Write(
 			c.val(i),
 		)
