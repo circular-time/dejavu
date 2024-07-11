@@ -1,7 +1,7 @@
 package dejavu
 
 import (
-	"bytes"
+	"io"
 	"os"
 	"testing"
 
@@ -118,24 +118,52 @@ func TestCacheSaveLoad(t *testing.T) {
 	)
 
 	var (
-		found  bool
-		buffer bytes.Buffer
 		cache0 *Cache
 		cache1 *Cache
-		e      error
-		i      int
+		file   *os.File
+
+		e     error
+		found bool
+		i     int
 	)
+
+	file, e = os.CreateTemp("", "")
+	if e != nil {
+		t.Error(e)
+	}
 
 	cache0 = NewCache128(nCases)
 
-	for i = 0; i < nCases; i++ {
+	for i = 0; i < nCases/2; i++ {
 		e = cache0.Insert(values[i])
 		if e != nil {
 			t.Error(e)
 		}
 	}
 
-	e = cache0.Save(&buffer)
+	e = cache0.Save(file)
+	if e != nil {
+		t.Error(e)
+	}
+
+	_, e = file.Seek(0, io.SeekStart)
+	if e != nil {
+		t.Error(e)
+	}
+
+	for i = nCases / 2; i < nCases; i++ {
+		e = cache0.Insert(values[i])
+		if e != nil {
+			t.Error(e)
+		}
+	}
+
+	e = cache0.SaveOnto(file)
+	if e != nil {
+		t.Error(e)
+	}
+
+	_, e = file.Seek(0, io.SeekStart)
 	if e != nil {
 		t.Error(e)
 	}
@@ -151,7 +179,7 @@ func TestCacheSaveLoad(t *testing.T) {
 		assert.False(t, found)
 	}
 
-	e = cache1.Load(&buffer)
+	e = cache1.Load(file)
 	if e != nil {
 		t.Error(e)
 	}

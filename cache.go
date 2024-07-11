@@ -143,6 +143,90 @@ func (c *Cache) Save(writer io.Writer) (e error) {
 	return
 }
 
+// SaveOnto is like Save, but instead of writing all cached values, it appends
+// only the last d values to a target [io.ReadWriteSeeker], and overwrites
+// metadata about value quantity. d is the difference between the number of
+// cached values and number of values previously written to the target.
+//
+// The caller is responsible for seeking to the same offset as when Save was
+// previously called.
+func (c *Cache) SaveOnto(target io.ReadWriteSeeker) (e error) {
+	c.mutex.Lock()
+
+	var (
+		cLength int = c.length
+		cValLen int = c.valLen
+
+		length uint32
+		valLen uint32
+
+		i int
+	)
+
+	c.mutex.Unlock()
+
+	e = binary.Read(target, binary.BigEndian, &valLen)
+	if e != nil {
+		return
+	}
+
+	if int(valLen) != cValLen {
+		e = fmt.Errorf("could not save onto: target value length %d bytes "+
+			"not equal to that of cached values, %d bytes",
+			valLen,
+			cValLen,
+		)
+
+		return
+	}
+
+	e = binary.Read(target, binary.BigEndian, &length)
+	if e != nil {
+		return
+	}
+
+	if int(length) > cLength {
+		e = fmt.Errorf("could not save onto: number of values in target %d "+
+			"is greater than the number of cached values, %d",
+			length,
+			cLength,
+		)
+
+		return
+	}
+
+	_, e = target.Seek(-maxUintLen32, io.SeekCurrent)
+	if e != nil {
+		return
+	}
+
+	e = binary.Write(target, binary.BigEndian,
+		uint32(cLength),
+	)
+	if e != nil {
+		return
+	}
+
+	_, e = target.Seek(
+		int64(length*valLen),
+		io.SeekCurrent,
+	)
+	if e != nil {
+		return
+	}
+
+	for i = int(length); i < cLength; i++ {
+		_, e = target.Write(
+			c.val(i),
+		)
+		if e != nil {
+			return
+		}
+	}
+
+	return
+}
+
 // Counterpart to Save, Load reads and inserts values from an [io.Reader],
 // after verifying metadata about inbound value length and quantity.
 func (c *Cache) Load(reader io.Reader) (e error) {
