@@ -59,6 +59,10 @@ that naturally occur in lexicographical order, such as time-based UUIDs, should
 be hashed (or have their bytes rearranged so that the random bits come first)
 before caching for optimal performance.
 
+Deletion of inserted values is not currently supported! To overcome this
+limitation, consider using two or more Caches in rotation (as in
+[log rotation](https://en.wikipedia.org/wiki/Log_rotation)).
+
 ## Space complexity
 `dejavu.Cache` occupies exactly _n_ (log _k_ + 2 log _n_) bits of memory to
 store _n_ elements out of a set of _k_ possibilities. For example, it would

@@ -48,9 +48,14 @@ func (c *Cache) Size() int {
 	return len(c.memory)
 }
 
+// Full returns true if the cache is full.
+func (c *Cache) Full() (full bool) {
+	return c.length == c.maxCap
+}
+
 // Insert caches a value.
 func (c *Cache) Insert(value []byte) (e error) {
-	if c.length == c.maxCap {
+	if c.Full() {
 		e = fmt.Errorf("could not insert: no more free space left in cache")
 
 		return

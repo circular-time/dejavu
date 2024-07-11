@@ -98,6 +98,17 @@ func TestCache(t *testing.T) {
 				assert.True(t, found)
 			}
 		}
+
+		if i == nCases-1 {
+			assert.True(t,
+				cache.Full(),
+			)
+
+		} else {
+			assert.False(t,
+				cache.Full(),
+			)
+		}
 	}
 }
 
