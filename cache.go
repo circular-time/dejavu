@@ -55,16 +55,16 @@ func (c *Cache) Full() (full bool) {
 
 // Insert caches a value.
 func (c *Cache) Insert(value []byte) (e error) {
+	defer errorf("could not insert", &e)
+
 	if c.Full() {
-		e = fmt.Errorf("could not insert: no more free space left in cache")
+		e = fmt.Errorf("no more free space left in cache")
 
 		return
 	}
 
 	if len(value) != c.valLen {
-		e = fmt.Errorf("could not insert: value length not equal to %d bytes",
-			c.valLen,
-		)
+		e = fmt.Errorf("value length not equal to %d bytes", c.valLen)
 
 		return
 	}
@@ -80,10 +80,10 @@ func (c *Cache) Insert(value []byte) (e error) {
 
 // Recall returns true if a value has been cached, false otherwise.
 func (c *Cache) Recall(value []byte) (cached bool, e error) {
+	defer errorf("could not recall", &e)
+
 	if len(value) != c.valLen {
-		e = fmt.Errorf("could not recall: value length not equal to %d bytes",
-			c.valLen,
-		)
+		e = fmt.Errorf("value length not equal to %d bytes", c.valLen)
 
 		return
 	}
@@ -107,6 +107,8 @@ func (c *Cache) Last() (value []byte) {
 // Save writes all cached values to an [io.Writer] in the order of their
 // insertion, after sending metadata about value length and quantity.
 func (c *Cache) Save(writer io.Writer) (e error) {
+	defer errorf("could not save", &e)
+
 	c.mutex.Lock()
 
 	var (
@@ -151,6 +153,8 @@ func (c *Cache) Save(writer io.Writer) (e error) {
 // The caller is responsible for seeking to the same offset as when Save was
 // previously called.
 func (c *Cache) SaveOnto(target io.ReadWriteSeeker) (e error) {
+	defer errorf("could not save onto", &e)
+
 	c.mutex.Lock()
 
 	var (
@@ -171,7 +175,7 @@ func (c *Cache) SaveOnto(target io.ReadWriteSeeker) (e error) {
 	}
 
 	if int(valLen) != cValLen {
-		e = fmt.Errorf("could not save onto: target value length %d bytes "+
+		e = fmt.Errorf("target value length %d bytes "+
 			"not equal to that of cached values, %d bytes",
 			valLen,
 			cValLen,
@@ -186,7 +190,7 @@ func (c *Cache) SaveOnto(target io.ReadWriteSeeker) (e error) {
 	}
 
 	if int(length) > cLength {
-		e = fmt.Errorf("could not save onto: number of values in target %d "+
+		e = fmt.Errorf("number of values in target %d "+
 			"is greater than the number of cached values, %d",
 			length,
 			cLength,
@@ -230,6 +234,8 @@ func (c *Cache) SaveOnto(target io.ReadWriteSeeker) (e error) {
 // Counterpart to Save, Load reads and inserts values from an [io.Reader],
 // after verifying metadata about inbound value length and quantity.
 func (c *Cache) Load(reader io.Reader) (e error) {
+	defer errorf("could not load", &e)
+
 	var (
 		i      uint32
 		length uint32
@@ -252,9 +258,7 @@ func (c *Cache) Load(reader io.Reader) (e error) {
 	defer c.mutex.Unlock()
 
 	if int(valLen) != c.valLen {
-		e = fmt.Errorf("could not load: value length not equal to %d bytes",
-			c.valLen,
-		)
+		e = fmt.Errorf("value length not equal to %d bytes", c.valLen)
 
 		return
 	}
@@ -262,7 +266,7 @@ func (c *Cache) Load(reader io.Reader) (e error) {
 	value = make([]byte, valLen)
 
 	if int(length) > (c.maxCap - c.length) {
-		e = fmt.Errorf("could not load: not enough free space left in cache")
+		e = fmt.Errorf("not enough free space left in cache")
 
 		return
 	}
@@ -516,4 +520,14 @@ func getUint32(from []byte) uint32 {
 	}
 
 	return binary.BigEndian.Uint32(b)
+}
+
+func errorf(prefix string, errPtr *error) {
+	if *errPtr == nil {
+		return
+	}
+
+	*errPtr = fmt.Errorf("%s: %w", prefix, *errPtr)
+
+	return
 }

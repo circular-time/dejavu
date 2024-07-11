@@ -1,6 +1,7 @@
 package dejavu
 
 import (
+	"errors"
 	"io"
 	"os"
 	"testing"
@@ -294,6 +295,34 @@ func TestGetUint32(t *testing.T) {
 
 	assert.Equal(t, uint32(256),
 		getUint32(from1),
+	)
+
+	return
+}
+
+func TestErrorf(t *testing.T) {
+	var (
+		e error
+
+		f = func(err bool) (erred bool, e error) {
+			defer errorf("oops", &e)
+
+			if err {
+				e = errors.New("ka-BOOM!")
+			}
+
+			return
+		}
+	)
+
+	_, e = f(false)
+
+	assert.Nil(t, e)
+
+	_, e = f(true)
+
+	assert.Equal(t, "oops: ka-BOOM!",
+		e.Error(),
 	)
 
 	return
