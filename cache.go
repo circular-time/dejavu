@@ -146,12 +146,16 @@ func (c *Cache) Save(writer io.Writer) (e error) {
 }
 
 // SaveOnto is like Save, but instead of writing all cached values, it appends
-// only the last d values to a target [io.ReadWriteSeeker], and overwrites
+// only the last d values to a target [io.ReadWriteSeeker], overwriting
 // metadata about value quantity. d is the difference between the number of
-// cached values and number of values previously written to the target.
+// cached values and number of values already written to the target by a
+// previous invocation of Save or SaveOnto.
 //
-// The caller is responsible for seeking to the same offset as when Save was
-// previously called.
+// If d is zero, then SaveOnto would write nothing, but nevertheless advance
+// the offset for the next Read() or Write().
+//
+// The caller is responsible for seeking the target to the same offset as when
+// Save or SaveOnto was previously called.
 func (c *Cache) SaveOnto(target io.ReadWriteSeeker) (e error) {
 	defer errorf("could not save onto", &e)
 
@@ -189,7 +193,8 @@ func (c *Cache) SaveOnto(target io.ReadWriteSeeker) (e error) {
 		return
 	}
 
-	if int(length) > cLength {
+	switch {
+	case int(length) > cLength:
 		e = fmt.Errorf("number of values in target %d "+
 			"is greater than the number of cached values, %d",
 			length,
@@ -197,18 +202,19 @@ func (c *Cache) SaveOnto(target io.ReadWriteSeeker) (e error) {
 		)
 
 		return
-	}
 
-	_, e = target.Seek(-maxUintLen32, io.SeekCurrent)
-	if e != nil {
-		return
-	}
+	case int(length) < cLength:
+		_, e = target.Seek(-maxUintLen32, io.SeekCurrent)
+		if e != nil {
+			return
+		}
 
-	e = binary.Write(target, binary.BigEndian,
-		uint32(cLength),
-	)
-	if e != nil {
-		return
+		e = binary.Write(target, binary.BigEndian,
+			uint32(cLength),
+		)
+		if e != nil {
+			return
+		}
 	}
 
 	_, e = target.Seek(
