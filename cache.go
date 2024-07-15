@@ -278,7 +278,7 @@ func (c *Cache) Load(reader io.Reader) (e error) {
 	}
 
 	for i = 0; i < length; i++ {
-		_, e = reader.Read(value)
+		_, e = io.ReadFull(reader, value)
 		if e != nil {
 			return
 		}
